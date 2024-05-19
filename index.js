@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 require('dotenv').config()
+const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const port = process.env.PORT || 5000;
 
@@ -42,9 +43,34 @@ async function run() {
             const result = await reviewsCollection.find().toArray();
             res.send(result)
         })
+        //middleware
+        const tokenVerify = (req, res, next) => {
+            console.log('token Verify', req.headers.authorization);
+            if (!req.headers.authorization) {
+                return res.status(401).send({ message: 'Unauthorized-Access' });
+            }
+            const token = req.headers.authorization.split(' ')[1];
+            jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+                if (err) {
+                    return res.status(401).send({ message: 'Unauthorized-Access' });
+                }
+                req.decoded = decoded;
+                next();
+            })
+
+            // next()
+        }
+
+        //jwt related api
+        app.post('/jwt', (req, res) => {
+            const user = req.body;
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+            res.send({ token })
+        })
+
 
         //users collection
-        app.get('/users', async (req, res) => {
+        app.get('/users', tokenVerify, async (req, res) => {
             const result = await userCollection.find().toArray();
             res.send(result);
         })
