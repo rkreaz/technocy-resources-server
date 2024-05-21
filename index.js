@@ -30,13 +30,35 @@ async function run() {
         await client.connect();
 
         const productCollection = client.db("technocyDb").collection("products");
+        const categoryCollection = client.db("technocyDb").collection("category");
         const userCollection = client.db("technocyDb").collection("users");
         const reviewsCollection = client.db("technocyDb").collection("reviews");
         const cartCollection = client.db("technocyDb").collection("carts");
 
+
+        //category related api
+        app.get('/category', async (req, res) => {
+            const result = await categoryCollection.find().toArray();
+            res.send(result)
+        })
+
         app.get('/products', async (req, res) => {
             const result = await productCollection.find().toArray();
             res.send(result)
+        })
+
+        app.get('/products/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await productCollection.findOne(query);
+            res.send(result);
+        })
+        app.get('/products/category/:category', async (req, res) => {
+            const categoryProduct = req.params.category;
+            const query = { category: categoryProduct };
+            const result = await productCollection.find(query).toArray();
+            console.log(result);
+            res.send(result);
         })
 
         app.get('/reviews', async (req, res) => {
