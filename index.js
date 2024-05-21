@@ -42,9 +42,22 @@ async function run() {
             res.send(result)
         })
 
+        //products related api
         app.get('/products', async (req, res) => {
-            const result = await productCollection.find().toArray();
-            res.send(result)
+            const limitProduct = Number(req.query.limit);
+            const page = req.query.page;
+            const query = {}
+            const cursor = productCollection.find(query);
+            const productCount = await productCollection.countDocuments();
+            const pageCount = Math.ceil(productCount / limitProduct)
+            const result = await cursor.skip(page * limitProduct).limit(limitProduct).toArray();
+            res.send({result, pageCount})
+        })
+
+        app.post('/products', async (req, res) => {
+            const product = req.body;
+            const result = await productCollection.insertOne(product);
+            res.send(result);
         })
 
         app.get('/products/:id', async (req, res) => {
@@ -61,10 +74,13 @@ async function run() {
             res.send(result);
         })
 
+        //reviews related api
         app.get('/reviews', async (req, res) => {
             const result = await reviewsCollection.find().toArray();
             res.send(result)
         })
+
+
         //middleware token Verify
         const tokenVerify = (req, res, next) => {
             console.log('token Verify', req.headers.authorization);
