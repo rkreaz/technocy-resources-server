@@ -36,50 +36,6 @@ async function run() {
         const cartCollection = client.db("technocyDb").collection("carts");
 
 
-        //category related api
-        app.get('/category', async (req, res) => {
-            const result = await categoryCollection.find().toArray();
-            res.send(result)
-        })
-
-        //products related api
-        app.get('/products', async (req, res) => {
-            const limitProduct = Number(req.query.limit);
-            const page = req.query.page;
-            const query = {}
-            const cursor = productCollection.find(query);
-            const productCount = await productCollection.countDocuments();
-            const pageCount = Math.ceil(productCount / limitProduct)
-            const result = await cursor.skip(page * limitProduct).limit(limitProduct).toArray();
-            res.send({result, pageCount})
-        })
-
-        app.post('/products', async (req, res) => {
-            const product = req.body;
-            const result = await productCollection.insertOne(product);
-            res.send(result);
-        })
-
-        app.get('/products/:id', async (req, res) => {
-            const id = req.params.id;
-            const query = { _id: new ObjectId(id) }
-            const result = await productCollection.findOne(query);
-            res.send(result);
-        })
-        app.get('/products/category/:category', async (req, res) => {
-            const categoryProduct = req.params.category;
-            const query = { category: categoryProduct };
-            const result = await productCollection.find(query).toArray();
-            console.log(result);
-            res.send(result);
-        })
-
-        //reviews related api
-        app.get('/reviews', async (req, res) => {
-            const result = await reviewsCollection.find().toArray();
-            res.send(result)
-        })
-
 
         //middleware token Verify
         const tokenVerify = (req, res, next) => {
@@ -115,6 +71,82 @@ async function run() {
             const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
             res.send({ token })
         })
+
+        //category related api
+        app.get('/category', async (req, res) => {
+            const result = await categoryCollection.find().toArray();
+            res.send(result)
+        })
+
+        //products related api
+        app.get('/products', async (req, res) => {
+            const limitProduct = Number(req.query.limit);
+            const page = req.query.page;
+            const query = {}
+            const cursor = productCollection.find(query);
+            const productCount = await productCollection.countDocuments();
+            const pageCount = Math.ceil(productCount / limitProduct)
+            const result = await cursor.skip(page * limitProduct).limit(limitProduct).toArray();
+            res.send({ result, pageCount })
+        })
+
+        app.post('/products', async (req, res) => {
+            const product = req.body;
+            const result = await productCollection.insertOne(product);
+            res.send(result);
+        })
+
+        app.get('/products/:id', tokenVerify, adminVerify, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await productCollection.findOne(query);
+            res.send(result);
+        })
+        app.patch('/products/:id', tokenVerify, adminVerify, async(req, res) => {
+            const product = req.body;
+            const id = req.params.id;
+            const filter = {_id: new ObjectId(id)};
+            const updateProduct ={
+                $set : {
+                    name: product.name,
+                    price: product.price,
+                    details: product.details,
+                    image: product.image,
+                    category: product.category,
+                }
+            }
+            const result = await productCollection.updateOne(filter, updateProduct);
+            res.send(result);
+        })
+
+        app.delete('/products/:id', tokenVerify, adminVerify, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await productCollection.deleteOne(query);
+            res.send(result);
+        })
+
+
+        app.get('/products/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await productCollection.findOne(query);
+            res.send(result);
+        })
+        app.get('/products/category/:category', async (req, res) => {
+            const categoryProduct = req.params.category;
+            const query = { category: categoryProduct };
+            const result = await productCollection.find(query).toArray();
+            console.log(result);
+            res.send(result);
+        })
+
+        //reviews related api
+        app.get('/reviews', async (req, res) => {
+            const result = await reviewsCollection.find().toArray();
+            res.send(result)
+        })
+
 
 
         //users collection
