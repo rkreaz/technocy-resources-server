@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 require('dotenv').config()
 const jwt = require('jsonwebtoken');
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const cors = require('cors');
 const port = process.env.PORT || 5000;
 
@@ -34,12 +35,12 @@ async function run() {
         const userCollection = client.db("technocyDb").collection("users");
         const reviewsCollection = client.db("technocyDb").collection("reviews");
         const cartCollection = client.db("technocyDb").collection("carts");
+        const paymentCollection = client.db("technocyDb").collection("payments");
 
 
 
         //middleware token Verify
         const tokenVerify = (req, res, next) => {
-            console.log('token Verify', req.headers.authorization);
             if (!req.headers.authorization) {
                 return res.status(401).send({ message: 'Unauthorized-Access' });
             }
@@ -64,6 +65,30 @@ async function run() {
             }
             next();
         }
+        //Stripe related api
+        app.post('/create-payment-intent', async (req, res) => {
+            const { price } = req.body;
+            const amount = parseInt(price * 100);
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: "usd",
+                payment_method_types: ["card"]
+            });
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+            });
+        })
+
+        app.post('/payments', async(req, res) => {
+            const payment = req.body;
+            const paymentResult = await paymentCollection.insertOne(payment);
+            const query = {_id: {
+                $in: payment.cartIds.map(id => new ObjectId(id))
+            }};
+            const deleteResult = await cartCollection.deleteMany(query);
+            res.send({paymentResult, deleteResult});
+        })
+
 
         //jwt related api
         app.post('/jwt', (req, res) => {
@@ -102,12 +127,12 @@ async function run() {
             const result = await productCollection.findOne(query);
             res.send(result);
         })
-        app.patch('/products/:id', tokenVerify, adminVerify, async(req, res) => {
+        app.patch('/products/:id', tokenVerify, adminVerify, async (req, res) => {
             const product = req.body;
             const id = req.params.id;
-            const filter = {_id: new ObjectId(id)};
-            const updateProduct ={
-                $set : {
+            const filter = { _id: new ObjectId(id) };
+            const updateProduct = {
+                $set: {
                     name: product.name,
                     price: product.price,
                     details: product.details,
@@ -137,7 +162,6 @@ async function run() {
             const categoryProduct = req.params.category;
             const query = { category: categoryProduct };
             const result = await productCollection.find(query).toArray();
-            console.log(result);
             res.send(result);
         })
 
