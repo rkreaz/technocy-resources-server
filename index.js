@@ -65,7 +65,7 @@ async function run() {
             }
             next();
         }
-        //Stripe related api
+        //Stripe/payment related api
         app.post('/create-payment-intent', async (req, res) => {
             const { price } = req.body;
             const amount = parseInt(price * 100);
@@ -79,14 +79,25 @@ async function run() {
             });
         })
 
-        app.post('/payments', async(req, res) => {
+        app.post('/payments', async (req, res) => {
             const payment = req.body;
             const paymentResult = await paymentCollection.insertOne(payment);
-            const query = {_id: {
-                $in: payment.cartIds.map(id => new ObjectId(id))
-            }};
+            const query = {
+                _id: {
+                    $in: payment.cartIds.map(id => new ObjectId(id))
+                }
+            };
             const deleteResult = await cartCollection.deleteMany(query);
-            res.send({paymentResult, deleteResult});
+            res.send({ paymentResult, deleteResult });
+        })
+
+        app.get('/payments/:email', tokenVerify, async (req, res) => {
+            const query = { email: req.params.email };
+            if (req.params.email !== req.decoded.email) {
+                return res.status(403).send({ message: 'forbidden access' })
+            };
+            const result = await paymentCollection.find(query).toArray();
+            res.send(result);
         })
 
 
