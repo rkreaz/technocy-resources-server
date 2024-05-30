@@ -14,6 +14,7 @@ app.use(express.json());
 
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const e = require('express');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.j9zzvlf.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -100,11 +101,54 @@ async function run() {
             res.send(result);
         })
 
+        //all Collection analysis
+        app.get('/admin-home-page', async (req, res) => {
+            const myUsers = await userCollection.estimatedDocumentCount();
+            const allProducts = await productCollection.estimatedDocumentCount();
+            const allOrders = await paymentCollection.estimatedDocumentCount();
+            const categories = await categoryCollection.estimatedDocumentCount();
+            const productReviews = await reviewsCollection.estimatedDocumentCount();
+
+           
+            //  const totalEarning = earningTo.reduce((total, payment) => total + payment, 0);
+            //  console.log('My-total-Earning', totalEarning);
+
+
+
+            const result = await paymentCollection.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        totalEarning: {
+                            $sum: '$price'
+                        }
+                    }
+                }
+            ]).toArray()
+            const totalEarning = result.length > 0 ? result[0].totalEarning : 0;
+            console.log(result);
+
+            // const payments = await paymentCollection.find().toArray();
+            // const earning = payments.reduce((total, payment) => Number(total) + Number(payment.price), 0);
+            // const totalEarning = earning.toFixed(2);
+
+            res.send({
+                myUsers,
+                allProducts,
+                allOrders,
+                categories,
+                productReviews,
+                totalEarning
+
+
+            })
+        })
+
 
         //jwt related api
         app.post('/jwt', (req, res) => {
             const user = req.body;
-            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '5h' });
             res.send({ token })
         })
 
@@ -132,7 +176,7 @@ async function run() {
             res.send(result);
         })
 
-        app.get('/products/:id', tokenVerify, adminVerify, async (req, res) => {
+        app.get('/products/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await productCollection.findOne(query);
@@ -180,6 +224,11 @@ async function run() {
         app.get('/reviews', async (req, res) => {
             const result = await reviewsCollection.find().toArray();
             res.send(result)
+        })
+        app.post('/reviews', async (req, res) => {
+            const reviews = req.body;
+            const result = await reviewsCollection.insertOne(reviews);
+            res.send(result);
         })
 
 
