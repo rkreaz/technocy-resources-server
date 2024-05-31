@@ -11,8 +11,6 @@ app.use(cors());
 app.use(express.json());
 
 
-
-
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const e = require('express');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.j9zzvlf.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -29,7 +27,7 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        // await client.connect();
 
         const productCollection = client.db("technocyDb").collection("products");
         const categoryCollection = client.db("technocyDb").collection("category");
@@ -37,8 +35,6 @@ async function run() {
         const reviewsCollection = client.db("technocyDb").collection("reviews");
         const cartCollection = client.db("technocyDb").collection("carts");
         const paymentCollection = client.db("technocyDb").collection("payments");
-
-
 
         //middleware token Verify
         const tokenVerify = (req, res, next) => {
@@ -183,8 +179,6 @@ async function run() {
             res.send(result)
         })
 
-
-
         //jwt related api
         app.post('/jwt', (req, res) => {
             const user = req.body;
@@ -276,8 +270,6 @@ async function run() {
             res.send(result);
         })
 
-
-
         //users collection
         app.get('/users', tokenVerify, adminVerify, async (req, res) => {
             const result = await userCollection.find().toArray();
@@ -349,10 +341,10 @@ async function run() {
             res.send(result);
         })
 
-
         // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        // await client.db("admin").command({ ping: 1 });
+        // console.log("Pinged your deployment. You successfully connected to MongoDB!");
+
     } finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
