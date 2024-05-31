@@ -109,12 +109,6 @@ async function run() {
             const categories = await categoryCollection.estimatedDocumentCount();
             const productReviews = await reviewsCollection.estimatedDocumentCount();
 
-           
-            //  const totalEarning = earningTo.reduce((total, payment) => total + payment, 0);
-            //  console.log('My-total-Earning', totalEarning);
-
-
-
             const result = await paymentCollection.aggregate([
                 {
                     $group: {
@@ -125,13 +119,8 @@ async function run() {
                     }
                 }
             ]).toArray()
-            const totalEarning = result.length > 0 ? result[0].totalEarning : 0;
-            console.log(result);
-
-            // const payments = await paymentCollection.find().toArray();
-            // const earning = payments.reduce((total, payment) => Number(total) + Number(payment.price), 0);
-            // const totalEarning = earning.toFixed(2);
-
+            const earning = result.length > 0 ? result[0].totalEarning : 0;
+            const totalEarning = earning.toFixed(2);
             res.send({
                 myUsers,
                 allProducts,
@@ -139,10 +128,61 @@ async function run() {
                 categories,
                 productReviews,
                 totalEarning
-
-
             })
         })
+
+        //All Order Stats 
+        app.get('/order-stats', async (req, res) => {
+            const result = await paymentCollection.aggregate([
+                // {
+                //     $unwind: '$productItemIds'
+                // },
+
+                {
+                    $addFields: {
+                      menuItemObjectIds: {
+                        $map: {
+                          input: '$productItemIds',
+                          as: 'itemId',
+                          in: { $toObjectId: '$$itemId' }
+                        }
+                      }
+                    }
+                  },
+             
+                {
+                    $lookup: {
+                        from: 'products',
+                        localField: 'menuItemObjectIds',
+                        foreignField: '_id',
+                        as: 'productItems'
+                    }
+                },
+
+                {
+                    $unwind: '$productItems'
+                },
+
+                {
+                    $group: {
+                        _id: '$productItems.category',
+                        totalQuantity: { $sum: 1 },
+                        totalEarning: {$sum: '$productItems.price'}
+                    }
+                },
+                {
+                    $project: {
+                      _id: 0,
+                      category: '$_id',
+                      totalQuantity: '$totalQuantity',
+                      totalPrice: '$totalEarning'
+                    }
+                  }
+            ]).toArray();
+
+            res.send(result)
+        })
+
 
 
         //jwt related api
@@ -156,6 +196,11 @@ async function run() {
         app.get('/category', async (req, res) => {
             const result = await categoryCollection.find().toArray();
             res.send(result)
+        })
+        app.post('/category', async (req, res) => {
+            const category = req.body;
+            const result = await categoryCollection.insertOne(category);
+            res.send(result);
         })
 
         //products related api
